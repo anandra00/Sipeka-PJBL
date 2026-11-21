@@ -1,0 +1,558 @@
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+SiPeka — Panduan Build Step-by-Step +
+Prompt Lengkap
+Kelompok 20 – tulang keBAKAR · Teknologi Big Data · Disusun 28 Oktober 2026
+
+
+0. Cara Pakai
+Proyek dibagi jadi 10 step berurutan. Tiap step berisi tujuan, prompt siap tempel ke AI
+(Claude/ChatGPT), dan checkpoint yang harus terpenuhi sebelum lanjut.
+
+      Awali setiap chat baru dengan Master Prompt (Step 0), baru tempel prompt step yang
+      sedang dikerjakan.
+      Bagian [ISI: ...] dan [TEMPEL: ...] wajib diganti dengan hasil nyata dari step sebelumnya
+      (schema, jumlah baris, temuan masalah data). Ini yang membuat kode AI cocok dengan
+      dataset asli, bukan tebakan.
+      Kalau ada error, kirim balik pesan error lengkap + kode di sekitarnya ke chat yang sama.
+      Rancangan mengikuti Worksheet 2 dan 3. Detail teknis (Worksheet 4) boleh
+      menyesuaikan.
+
+
+1. Roadmap & Saran Pembagian Kerja
+
+  Step        Pekerjaan                                Output utama                       Saran PIC
+
+  1           Setup environment & repo                 Docker/Colab jalan, repo GitHub    Raditya
+
+  2           Download & profiling                     Ringkasan kualitas data            Arya
+              dataset
+
+  3           Ingestion batch                          Parquet raw tervalidasi            Arya
+
+  4           Cleaning & feature                       Dataset fitur + tabel agregat      Anandra
+              engineering
+
+  5           EDA deskriptif                           Grafik & insight (pertanyaan       Prima
+                                                       analitik 1, 2, 4)
+
+  6           Modeling & evaluasi                      Model RF + LR, metrik, feature     Anandra +
+                                                       importance                         Raditya
+
+  7           Simpan hasil ke                          Tabel prediksi, metrik, forecast   Raditya
+              PostgreSQL
+
+
+
+
+                                                                                                      Page 1 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+  Step        Pekerjaan                                Output utama                  Saran PIC
+
+  8           Dashboard Streamlit +                    Dashboard interaktif          Prima
+              Plotly
+
+  9           Integrasi & testing                      Pipeline end-to-end           Semua
+
+  10          Dokumentasi, laporan,                    README, laporan, skrip demo   Semua
+              demo
+
+
+
+
+2. Keputusan Penting Sebelum Mulai
+
+2.1 Pilih jalur environment
+      Jalur A (disarankan, paling sesuai arsitektur): Docker Compose lokal berisi HDFS
+      (namenode + datanode), PostgreSQL, dan Jupyter + PySpark. RAM laptop minimal
+      sekitar 8 GB (16 GB lebih nyaman).
+      Jalur B (laptop kurang kuat): Google Colab untuk Spark + MLlib, Parquet di Google
+      Drive menggantikan HDFS, PostgreSQL dipasang lewat apt di Colab. Konsekuensinya
+      HDFS tidak benar-benar dipakai, jadi konsultasikan ke dosen/asisten dan jelaskan
+      sebagai penyederhanaan. Session Colab bisa reset, jadi simpan output tiap step ke
+      Drive.
+      Jangan campur Colab dengan Docker lokal: Colab tidak bisa menjangkau
+      HDFS/PostgreSQL di laptop tanpa tunnel.
+
+
+2.2 Cek dulu kondisi dataset (jangan percaya asumsi dokumen sebelum dicek)
+      Jumlah baris asli per tahun. Dokumen menulis 500–600 ribu per tahun; buktikan
+      dengan angka nyata dan koreksi dokumen jika beda.
+      Nama kolom dan format tanggal bisa berbeda antar tahun (2018, 2020, 2021; tahun 2019
+      tidak ada).
+      Kolom volume bisa berisi teks, koma desimal, kosong, nol, atau nilai ekstrem.
+      Cek duplikat pada kombinasi (titik_lokasi, tanggal).
+
+
+2.3 Aturan modeling agar hasil valid
+      Split berbasis waktu, bukan acak. Contoh: latih di 2018 + 2020, uji di 2021. Split acak
+      membuat model mengintip hari-hari bersebelahan sehingga skor terlalu bagus.
+      Encoding: Random Forest MLlib pakai StringIndexer untuk kategori berkardinalitas
+      tinggi (titik_lokasi), dan maxBins harus ≥ jumlah kategori terbesar, kalau tidak MLlib
+      error. One-Hot Encoding dipakai untuk Linear Regression pembanding. Worksheet 2
+
+
+
+                                                                                                 Page 2 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+     menulis One-Hot; jelaskan di laporan bahwa RF memakai index karena kardinalitas.
+     Dua versi fitur. v1 = kalender + lokasi (sesuai worksheet). v2 = v1 + fitur historis per
+     titik (lag, rolling mean). v2 biasanya lebih akurat, tapi untuk prediksi jauh ke depan nilai
+     lag tidak tersedia, jadi tulis batasannya di laporan.
+     Metrik: RMSE, MAE, R², plus baseline naif (rata-rata historis per titik). Model harus
+     mengalahkan baseline.
+     Catatan presentasi: 1,5 juta baris sebenarnya masih muat di pandas. Jangan klaim
+     pasti Out-of-Memory (Bagian 4 poin 7 Worksheet 2). Alasan kuat memakai Spark:
+     tuntutan mata kuliah, skalabilitas saat data bertambah, dan MLlib yang terdistribusi.
+
+
+Step 0 — Master Prompt (tempel di awal setiap chat)
+  Kamu adalah mentor data engineering & machine learning. Aku mahasiswa yang
+  mengerjakan proyek mata kuliah Teknologi Big Data bersama 3 teman. Bantu aku
+  membangun proyek secara bertahap dengan kode yang bisa langsung dijalankan
+  dan penjelasan singkat per bagian.
+
+  KONTEKS PROYEK
+  - Nama: SiPeka — Sistem Prediksi Volume Pengangkutan Sampah DKI Jakarta
+  Berbasis Big Data (Smart City)
+  - Dataset: Data Volume Pengangkutan Sampah di Kali/Sungai/Situ/Waduk DKI
+  Jakarta tahun 2018, 2020, 2021 dari data.jakarta.go.id; CSV, structured,
+  batch, estimasi >1,5 juta baris
+  - Kolom: periode_data, bulan, titik_lokasi, kecamatan, wilayah, panjang_luas,
+  satuan_panjang_luas, tanggal, volume_sampah_perhari (m3)
+  - Masalah: volume harian berfluktuasi dan tidak terprediksi, sehingga
+  penjadwalan truk dan alokasi petugas Dinas Lingkungan Hidup kurang efisien
+  - Jenis analitik: Regression. Target: volume_sampah_perhari (m3)
+  - Metode utama: Random Forest Regressor (Spark MLlib). Pembanding: Linear
+  Regression
+  - Arsitektur batch: Data source -> Ingestion (Python/PySpark) -> Storage
+  (HDFS data lake + PostgreSQL serving) -> Processing (PySpark) -> Analytics
+  (MLlib) -> Visualization (Streamlit + Plotly)
+  - Lingkungan: [ISI: Jalur A Docker lokal / Jalur B Google Colab], OS [ISI],
+  RAM [ISI]
+  - Pertanyaan analitik: (1) perubahan volume berdasarkan waktu dan wilayah,
+  (2) pola antar periode, (3) akurasi model prediksi, (4) wilayah/titik dengan
+  volume tertinggi
+
+
+  ATURAN JAWABAN
+  1. Python 3.10+ dan PySpark 3.5.x. Kode modular, komentar berbahasa
+  Indonesia.
+  2. Jangan mengarang nama kolom atau nilai data. Jika perlu asumsi, tulis
+
+
+
+
+                                                                                           Page 3 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+  eksplisit di awal.
+  3. Format jawaban: tujuan -> kode -> cara menjalankan -> cara memverifikasi
+  hasil -> kemungkinan error.
+  4. Split data untuk modeling wajib berbasis waktu, bukan acak. Hindari data
+  leakage.
+  5. Jika ada pilihan desain, rekomendasikan satu dan beri alasan singkat.
+
+
+  Balas 'siap' lalu tunggu perintah step berikutnya.
+
+
+Checkpoint: AI membalas siap. Siapkan juga struktur repo: data/raw, data/processed,
+src/ingestion, src/processing, src/modeling, src/dashboard, notebooks, models, docs.
+
+
+Step 1 — Setup Environment & Repo
+Tujuan: lingkungan kerja yang bisa diulang semua anggota. Buat repo GitHub privat,
+tambahkan semua anggota, pakai branch per step.
+
+Prompt Jalur A (Docker lokal):
+
+  STEP 1 — SETUP ENVIRONMENT (JALUR A: DOCKER LOKAL)
+  Buatkan docker-compose.yml untuk SiPeka berisi:
+  1. HDFS 1 namenode + 1 datanode dengan volume persisten.
+  2. PostgreSQL 16, database sipeka, user/password dari file .env, volume
+  persisten.
+  3. Container Jupyter + PySpark di network yang sama, sudah menyertakan JDBC
+  driver PostgreSQL, dan bisa mengakses HDFS serta PostgreSQL lewat nama
+  service.
+  4. Port mapping untuk UI namenode, Jupyter, dan PostgreSQL.
+  Sertakan juga: .env.example, .gitignore (kecualikan data besar dan .env),
+  requirements.txt, struktur folder repo (data/raw, data/processed,
+  src/ingestion, src/processing, src/modeling, src/dashboard, notebooks,
+  models, docs), perintah menjalankan dan menghentikan, serta skrip tes
+  koneksi: tulis file kecil ke HDFS lalu baca dengan PySpark, dan insert 1
+  baris ke PostgreSQL dari PySpark via JDBC.
+  Spesifikasi laptopku: [ISI: OS, RAM, CPU]. Tentukan batas memori Spark yang
+  aman. Jelaskan troubleshooting jika namenode tidak start atau port bentrok.
+
+
+Prompt Jalur B (Google Colab):
+
+
+
+
+                                                                                     Page 4 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+  STEP 1 — SETUP ENVIRONMENT (JALUR B: GOOGLE COLAB)
+  Buatkan notebook Colab setup SiPeka: install PySpark, mount Google Drive,
+  buat folder /MyDrive/sipeka/raw, /processed, /models, konfigurasi
+  SparkSession yang aman untuk Colab gratis, install dan jalankan PostgreSQL
+  via apt beserta JDBC driver. Tes: tulis Parquet ke Drive, baca lagi dengan
+  Spark, tulis satu tabel kecil ke PostgreSQL lewat JDBC. Buat satu cell setup
+  yang bisa dijalankan ulang jika session reset. Jelaskan bagian mana yang
+  menggantikan HDFS dan apa konsekuensinya terhadap arsitektur di Worksheet 2.
+
+
+Checkpoint: tes koneksi lulus (Spark ↔ storage ↔ PostgreSQL) dan semua anggota bisa
+menjalankan lingkungan yang sama.
+
+
+Step 2 — Download Dataset & Profiling
+Manual dulu: buka data.jakarta.go.id, cari dataset volume pengangkutan sampah
+kali/sungai/situ/waduk, unduh CSV 2018, 2020, 2021 ke data/raw/ tanpa diedit. Catat URL
+dan tanggal unduh untuk laporan.
+
+  STEP 2 — PROFILING DATASET
+  Aku punya 3 file CSV: [ISI: nama file 2018, 2020, 2021 dan ukuran tiap file].
+  Buatkan notebook profiling PySpark (pandas hanya untuk sampel 10.000 baris)
+  yang:
+  1. Membaca ketiga file dengan semua kolom string dulu, mencetak schema,
+  jumlah baris dan kolom per file, serta membandingkan nama kolom antar tahun
+  (tampilkan perbedaannya).
+  2. Menampilkan 20 baris sampel, jumlah null/kosong per kolom, dan nilai unik
+  untuk periode_data, bulan, satuan_panjang_luas, wilayah.
+  3. Mengecek format tanggal (pola yang ditemukan), rentang tanggal per file,
+  dan tanggal yang berada di luar tahun file.
+  4. Mengecek volume_sampah_perhari: jumlah nilai yang tidak bisa di-cast ke
+  angka (beri contoh), nilai negatif, nol, serta min/max/mean/median/persentil
+  95 dan 99.
+  5. Mengecek duplikat pada (titik_lokasi, tanggal), jumlah titik_lokasi unik,
+  kecamatan unik, dan wilayah unik.
+  6. Menghasilkan ringkasan tabel Markdown yang bisa kusalin ke laporan.
+  Di akhir, tulis daftar masalah kualitas data beserta rekomendasi penanganan.
+
+
+Checkpoint: kalian punya angka nyata (jumlah baris per tahun, jumlah titik lokasi,
+persentase volume kosong/tidak valid). Simpan ringkasannya, dipakai di Step 3 dan 4.
+
+
+Step 3 — Ingestion Batch
+Tujuan: data mentah masuk ke data lake secara tervalidasi, tanpa membuang data diam-
+diam.
+
+
+                                                                                     Page 5 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+  STEP 3 — INGESTION BATCH
+  Hasil profiling: [TEMPEL: ringkasan temuan Step 2 — schema, perbedaan kolom
+  antar tahun, format tanggal, masalah volume].
+  Buatkan src/ingestion/ingest.py (PySpark, dijalankan dari command line dengan
+  argumen --input --output --year) yang:
+  1. Membaca CSV tiap tahun dengan schema eksplisit (StructType), bukan
+  inferSchema.
+  2. Menyeragamkan nama kolom antar tahun (mapping), trim spasi, huruf kecil.
+  3. Mengubah tanggal ke DateType dan volume ke DoubleType (tangani koma
+  desimal). Baris yang gagal parsing JANGAN dibuang diam-diam: tulis ke folder
+  quarantine beserta alasannya.
+  4. Menambah kolom metadata: source_file, tahun_sumber, ingested_at.
+  5. Validasi: jumlah baris masuk = baris valid + quarantine. Cetak laporan
+  validasi dan simpan sebagai JSON.
+  6. Menulis hasil ke [ISI: path HDFS atau Drive] dalam format Parquet
+  dipartisi per tahun, dan jelaskan alasan memilih Parquet.
+  7. Idempotent: dijalankan dua kali tidak menggandakan data (overwrite per
+  partisi).
+  8. Opsional: contoh penjadwalan dengan cron.
+  Sertakan unit test pytest untuk fungsi parsing tanggal dan volume, cara
+  menjalankan, dan cara memverifikasi (bandingkan jumlah baris CSV vs Parquet).
+
+
+Checkpoint: jumlah baris CSV = Parquet valid + quarantine, untuk ketiga tahun.
+
+
+
+
+                                                                                 Page 6 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+Step 4 — Cleaning & Feature Engineering
+  STEP 4 — CLEANING & FEATURE ENGINEERING (PySpark)
+  Input: Parquet raw dari Step 3 di [ISI: path]. Masalah data yang ditemukan:
+  [TEMPEL: daftar masalah Step 2].
+  Buatkan src/processing/clean_features.py yang:
+  A. CLEANING
+  1. Tangani missing value: jelaskan opsi per kolom lalu terapkan (mis. buang
+  baris tanpa target/tanggal/titik_lokasi; imputasi panjang_luas dengan median
+  per titik_lokasi).
+  2. Tangani duplikat (titik_lokasi, tanggal) dengan aturan jelas (sum atau
+  mean, jelaskan pilihannya).
+  3. Nilai negatif dan outlier ekstrem pada volume: jangan hapus otomatis. Buat
+  kolom is_outlier (IQR atau persentil 99,9), laporkan jumlahnya, dan beri opsi
+  ikut dilatih atau tidak.
+  4. Normalisasi teks wilayah, kecamatan, titik_lokasi (trim, kapitalisasi
+  seragam, variasi penulisan).
+  B. FEATURE ENGINEERING
+  5. Dari tanggal: tahun, bulan, hari_dalam_bulan, hari_dalam_minggu,
+  is_weekend, minggu_ke, kuartal, hari_ke_dalam_tahun, plus encoding siklik
+  sin/cos untuk bulan dan hari_dalam_minggu.
+  6. Fitur kalender: musim hujan (asumsi Okt–Apr, parameter yang bisa diubah)
+  dan hari libur nasional Indonesia 2018, 2020, 2021 (jika tidak ada library,
+  buat daftar manual dan sebutkan sumbernya agar bisa kuverifikasi).
+  7. Fitur historis per titik_lokasi memakai Window TANPA leakage (hanya data
+  sebelum tanggal target): lag_1, lag_7, rolling_mean_7, rolling_mean_30. Buat
+  dua set fitur: v1 (kalender + lokasi) dan v2 (v1 + historis).
+  8. Encoding: StringIndexer (handleInvalid='keep') untuk titik_lokasi,
+  kecamatan, wilayah (dipakai Random Forest) dan OneHotEncoder untuk versi
+  Linear Regression, dibungkus dalam Pipeline agar bisa dipakai ulang di
+  dashboard.
+  C. OUTPUT
+  9. Simpan dataset fitur ke Parquet dipartisi per tahun di [ISI: path]. Simpan
+  tabel agregat bersih ke PostgreSQL via JDBC: agg_harian_wilayah,
+  agg_bulanan_kecamatan, agg_titik.
+  10. Cetak data quality report sebelum vs sesudah (baris, null, outlier) dan
+  jelaskan tiap keputusan dalam kalimat singkat yang bisa masuk laporan.
+
+
+Checkpoint: Parquet fitur v1 dan v2 ada, tabel agregat terisi di PostgreSQL, tidak ada
+kolom yang memakai informasi dari masa depan.
+
+
+Step 5 — EDA Deskriptif
+Menjawab pertanyaan analitik 1, 2, dan 4 (tren waktu/wilayah, pola antar periode, wilayah
+dan titik tertinggi).
+
+
+
+                                                                                    Page 7 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+  STEP 5 — EDA DESKRIPTIF
+  Data bersih ada di [ISI: path/tabel]. Buatkan notebook EDA yang melakukan
+  agregasi di Spark lalu hanya mengubah hasil agregat ke pandas untuk
+  visualisasi Plotly:
+  1. Tren volume harian dan bulanan (total dan rata-rata) per tahun, dengan
+  perbandingan 2018 vs 2020 vs 2021.
+  2. Volume per wilayah dan per kecamatan, heatmap bulan x wilayah, dan pola
+  hari dalam minggu.
+  3. Top 10 titik_lokasi dengan volume tertinggi (total dan rata-rata harian).
+  4. Sebaran volume (histogram, boxplot per wilayah) dan identifikasi lonjakan.
+  5. Untuk tiap grafik, tulis satu kalimat insight yang hanya berdasarkan angka
+  yang tampil, lalu rangkum jawaban untuk pertanyaan analitik 1, 2, dan 4.
+  Simpan semua figure Plotly sebagai file JSON/HTML di docs/figures agar bisa
+  dipakai di dashboard dan laporan.
+
+
+Checkpoint: ada jawaban tertulis untuk pertanyaan analitik 1, 2, 4 berikut grafiknya.
+
+
+Step 6 — Modeling & Evaluasi
+Tujuan: menjawab pertanyaan analitik 3 (seberapa akurat prediksi).
+
+
+
+
+                                                                                        Page 8 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+  STEP 6 — MODELING SPARK MLLIB
+  Input: Parquet fitur v1 dan v2 dari Step 4 di [ISI: path]. Jumlah
+  titik_lokasi unik: [ISI], kardinalitas kategori terbesar: [ISI].
+  Buatkan notebook/script src/modeling/train.py yang:
+  1. Split BERBASIS WAKTU: train = 2018 + 2020, test = 2021. Ambil bagian akhir
+  train (mis. semester 2 tahun 2020) sebagai validation untuk tuning. Dilarang
+  random split.
+  2. Baseline naif: prediksi = rata-rata historis per titik_lokasi dari data
+  train.
+  3. Linear Regression (fitur OHE + scaling) sebagai pembanding.
+  4. RandomForestRegressor dengan fitur StringIndexer, maxBins >= kardinalitas
+  terbesar. Tuning grid kecil: numTrees [50, 100], maxDepth [8, 12, 15],
+  minInstancesPerNode [1, 5]. Catat waktu latih tiap kombinasi.
+  5. Jalankan semuanya untuk v1 dan v2. Hitung RMSE, MAE, R² pada validation
+  dan test, lalu tampilkan tabel perbandingan (baseline, LR v1, RF v1, LR v2,
+  RF v2).
+  6. Analisis error: error per wilayah, per bulan, dan residual (actual vs
+  predicted). Tampilkan feature importance Random Forest.
+  7. Simpan PipelineModel terbaik ke models/ dengan nomor versi dan simpan
+  tabel metrik sebagai CSV.
+  8. Buat fungsi predict(tanggal, titik_lokasi) untuk versi yang bisa
+  memprediksi tanggal masa depan (v1 atau fitur rata-rata historis titik-
+  bulan), dan jelaskan batas pemakaian v2.
+  9. Tulis interpretasi hasil dalam bahasa laporan: apakah RF mengalahkan
+  baseline dan LR, dan mengapa.
+  Jangan mengarang angka; semua hasil harus berasal dari eksekusi.
+
+
+Checkpoint: tabel metrik lengkap, model tersimpan, RF terbukti (atau tidak)
+mengalahkan baseline. Kalau RF kalah dari Linear Regression, laporkan apa adanya
+beserta analisisnya; itu tetap temuan yang valid.
+
+
+Step 7 — Simpan Hasil ke PostgreSQL (Serving Layer)
+  STEP 7 — SERVING LAYER POSTGRESQL
+  Buatkan: (a) DDL tabel predictions (tanggal, titik_lokasi, kecamatan,
+  wilayah, y_true, y_pred, model_version), model_metrics (model_version,
+  nama_model, versi_fitur, rmse, mae, r2, tanggal_latih), forecast_future
+  (tanggal, titik_lokasi, wilayah, y_pred, model_version), beserta index untuk
+  query dashboard; (b) script src/modeling/score.py yang memuat model terbaik
+  dan menulis prediksi data test serta forecast [ISI: 30 atau 90] hari ke depan
+  ke PostgreSQL via JDBC; (c) query SQL verifikasi (jumlah baris, rentang
+  tanggal, tidak ada y_pred null); (d) view SQL ringkasan per wilayah per bulan
+  untuk dashboard.
+
+
+
+
+                                                                                   Page 9 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+Checkpoint: semua tabel terisi dan query verifikasi lulus.
+
+
+Step 8 — Dashboard Streamlit + Plotly
+  STEP 8 — DASHBOARD STREAMLIT
+  Buatkan aplikasi Streamlit multi-halaman di src/dashboard yang membaca dari
+  PostgreSQL (SQLAlchemy, st.cache_data, kredensial dari environment variable).
+  Halaman:
+  1. Ringkasan: KPI (total volume, rata-rata harian, titik tertinggi, akurasi
+  model terbaik).
+  2. Tren & Pola: filter tahun, wilayah, kecamatan; grafik tren dan heatmap.
+  3. Wilayah & Titik: ranking Top N.
+  4. Prediksi: pilih wilayah/titik dan rentang tanggal, tampilkan actual vs
+  predicted dan forecast ke depan.
+  5. Rekomendasi Armada: jumlah truk = ceil(prediksi_volume /
+  (kapasitas_truk_m3 x rit_per_hari)). Kapasitas dan rit diisi pengguna di
+  sidebar dan diberi label jelas bahwa itu asumsi, bukan dari dataset.
+  6. Evaluasi Model: tabel metrik, scatter actual vs predicted, error per
+  wilayah.
+  Tambahkan penanganan data kosong, tombol unduh CSV, tema konsisten,
+  Dockerfile, dan service dashboard di docker-compose (Jalur A). Untuk Jalur B,
+  jelaskan opsi menjalankan dashboard dengan membaca file Parquet/CSV hasil
+  ekspor, atau deploy di Streamlit Community Cloud.
+
+
+Checkpoint: dashboard jalan dari nol dengan satu perintah dan semua halaman
+menampilkan data nyata.
+
+
+Step 9 — Integrasi & Testing End-to-End
+  STEP 9 — INTEGRASI & TESTING
+  Buatkan: (1) run_pipeline.sh atau Makefile yang menjalankan ingestion ->
+  clean_features -> train -> score berurutan dengan log dan exit code jelas;
+  (2) pytest untuk fungsi parsing, fitur tanggal, dan skema output; (3)
+  pengecekan konsistensi antar tahap (jumlah baris, rentang tanggal, tidak ada
+  null pada fitur wajib); (4) panduan reproduksi dari clone repo sampai
+  dashboard tampil, ditulis untuk anggota yang belum pernah menyentuh proyek.
+
+
+Checkpoint: satu anggota yang belum pernah menyentuh proyek berhasil
+menjalankannya dari nol memakai panduan.
+
+
+
+
+                                                                              Page 10 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+Step 10 — Dokumentasi, Laporan & Demo
+  STEP 10 — DOKUMENTASI & DEMO
+  Hasil proyekku: [TEMPEL: tabel metrik Step 6, temuan EDA Step 5, jumlah baris
+  nyata]. Buatkan: (1) README.md lengkap (deskripsi, arsitektur, cara
+  menjalankan, struktur repo); (2) diagram arsitektur dalam Mermaid yang cocok
+  dengan implementasi sebenarnya (tandai jika ada penyimpangan dari Worksheet
+  2); (3) kerangka laporan: latar belakang, data, arsitektur, metode, hasil,
+  keterbatasan, saran; (4) skrip demo 5–7 menit; (5) daftar 12 pertanyaan
+  penguji beserta jawaban singkat, minimal: mengapa Spark, mengapa batch,
+  mengapa RF dibanding LR, bagaimana mencegah leakage, apa keterbatasan model,
+  dan mengapa 2019 tidak ada.
+
+
+
+
+3. Troubleshooting Cepat
+
+  Masalah                          Penyebab umum                        Solusi
+
+  Error terkait                    Kategori titik_lokasi lebih banyak   Naikkan maxBins ≥ kardinalitas
+  maxBins di RF                    dari maxBins                         terbesar
+
+  Out-of-Memory                    Memori driver kecil,                 Naikkan spark.driver.memory,
+  di Spark                         collect/toPandas pada data           agregasi dulu sebelum toPandas
+                                   besar
+
+  Tanggal jadi null                Format tanggal tidak seragam         Coba beberapa pola dengan
+                                                                        coalesce(to_date(...)) dan cek
+                                                                        quarantine
+
+  Skor model                       Leakage atau split acak              Cek split waktu dan fitur lag
+  terlalu bagus                                                         memakai data sebelum tanggal
+                                                                        target
+
+  Koneksi JDBC                     Driver belum terpasang atau          Pastikan jar PostgreSQL di
+  gagal                            host salah                           classpath, pakai nama service
+                                                                        Docker
+
+  Colab reset                      Session habis                        Simpan setiap output ke Drive,
+                                                                        siapkan cell setup
+
+
+
+
+4. Checklist Final
+     Angka dataset di laporan sesuai hasil profiling nyata.
+     Split berbasis waktu, metrik dibandingkan dengan baseline.
+
+
+
+
+                                                                                                     Page 11 of 12
+SiPeka — Panduan Build Step-by-Step + Prompt Lengkap
+
+
+
+
+     Semua tabel PostgreSQL terisi dan dashboard membaca dari sana.
+     Asumsi (kapasitas truk, musim hujan, hari libur) ditandai jelas.
+     Penyimpangan dari Worksheet 2 (mis. Jalur B atau StringIndexer) dijelaskan di laporan.
+     Repo bisa dijalankan dari nol oleh anggota lain.
+
+
+
+
+                                                                                    Page 12 of 12
+

@@ -1,0 +1,23 @@
+# Data mentah & hasil proses besar di root repo (melebihi batas ukuran GitHub)
+/Dataset/
+/data/
+/spark-warehouse/
+
+# Binary Hadoop lokal Windows
+/.hadoop/
+
+# Environment & rahasia
+.env
+
+# Python & Jupyter
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+.pytest_cache/
+
+# OS / Editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

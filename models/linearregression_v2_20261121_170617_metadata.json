@@ -1,0 +1,94 @@
+{
+  "versi_model": "linearregression_v2_20261121_170617",
+  "model": "LinearRegression",
+  "versi_fitur": "v2",
+  "fitur_numerik": [
+    "tahun",
+    "bulan",
+    "hari_dalam_bulan",
+    "hari_dalam_minggu",
+    "is_weekend",
+    "minggu_ke",
+    "kuartal",
+    "hari_ke_dalam_tahun",
+    "bulan_sin",
+    "bulan_cos",
+    "hari_sin",
+    "hari_cos",
+    "is_musim_hujan",
+    "is_hari_libur",
+    "lag_1",
+    "lag_7",
+    "lag_14",
+    "rolling_mean_7",
+    "rolling_mean_14",
+    "rolling_mean_30",
+    "rolling_std_7",
+    "rolling_max_7",
+    "titik_hist_mean",
+    "titik_hist_zero_rate"
+  ],
+  "fitur_kategorik": [
+    "titik_lokasi",
+    "kecamatan",
+    "wilayah"
+  ],
+  "fitur_model": [
+    "tahun",
+    "bulan",
+    "hari_dalam_bulan",
+    "hari_dalam_minggu",
+    "is_weekend",
+    "minggu_ke",
+    "kuartal",
+    "hari_ke_dalam_tahun",
+    "bulan_sin",
+    "bulan_cos",
+    "hari_sin",
+    "hari_cos",
+    "is_musim_hujan",
+    "is_hari_libur",
+    "lag_1",
+    "lag_7",
+    "lag_14",
+    "rolling_mean_7",
+    "rolling_mean_14",
+    "rolling_mean_30",
+    "rolling_std_7",
+    "rolling_max_7",
+    "titik_hist_mean",
+    "titik_hist_zero_rate",
+    "titik_lokasi_ohe",
+    "kecamatan_ohe",
+    "wilayah_ohe"
+  ],
+  "parameter": {
+    "regParam": 0.01,
+    "elasticNetParam": 0.1,
+    "maxIter": 100
+  },
+  "max_bins": null,
+  "skema_split": {
+    "mode": "kronologis_70_15_15",
+    "rasio_target": {
+      "train": 0.7,
+      "validation": 0.15,
+      "test": 0.15
+    },
+    "tanggal_train_akhir": "2021-07-03",
+    "tanggal_valid_akhir": "2021-10-02"
+  },
+  "latih_tanpa_outlier": true,
+  "metrik_validation": {
+    "rmse": 3.2969805496149633,
+    "mae": 0.947437492176275,
+    "r2": 0.08483578342660414
+  },
+  "metrik_test": {
+    "rmse": 3.740379134746613,
+    "mae": 0.9284044154476898,
+    "r2": 0.15549788422529032
+  },
+  "dilatih_pada": "2026-11-21T17:06:20",
+  "catatan": "Split kronologis 70/15/15; prediksi dievaluasi dengan clamp >= 0."
+}

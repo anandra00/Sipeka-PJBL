@@ -1,0 +1,117 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: sipeka-namenode
+    hostname: namenode
+    environment:
+      - CLUSTER_NAME=sipeka
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - HDFS_CONF_dfs_replication=1
+      - HDFS_CONF_dfs_permissions_enabled=false
+      - HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check=false
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - hdfs_namenode:/hadoop/dfs/name
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9870/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+    networks:
+      - sipeka-net
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: sipeka-datanode
+    hostname: datanode
+    depends_on:
+      namenode:
+        condition: service_healthy
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - HDFS_CONF_dfs_replication=1
+      - HDFS_CONF_dfs_permissions_enabled=false
+    volumes:
+      - hdfs_datanode:/hadoop/dfs/data
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9864/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+    networks:
+      - sipeka-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: sipeka-postgres
+    hostname: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sipeka}
+      POSTGRES_USER: ${POSTGRES_USER:-sipeka}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sipeka}
+      TZ: Asia/Jakarta
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sipeka} -d ${POSTGRES_DB:-sipeka}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sipeka-net
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.jupyter
+    container_name: sipeka-jupyter
+    hostname: jupyter
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN:-sipeka}
+      - POSTGRES_DB=${POSTGRES_DB:-sipeka}
+      - POSTGRES_USER=${POSTGRES_USER:-sipeka}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sipeka}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - PYTHONPATH=/workspace
+    ports:
+      - "8888:8888"
+      - "4040:4040"
+    volumes:
+      - .:/workspace
+    mem_limit: 2600m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/api"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - sipeka-net
+
+volumes:
+  hdfs_namenode:
+  hdfs_datanode:
+  pg_data:
+
+networks:
+  sipeka-net:
+    driver: bridge

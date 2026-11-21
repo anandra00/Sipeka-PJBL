@@ -1,0 +1,109 @@
+# ============================================================
+# SiPeka — image Jupyter + PySpark (Jalur A)
+# ------------------------------------------------------------
+# Dipakai oleh service `jupyter` di docker-compose.yml.
+#
+# Isi image:
+#   - Python 3.11
+#   - OpenJDK 17 (syarat Spark 3.5.x)
+#   - PySpark 3.5.x (sudah membawa hadoop-client, jadi hdfs:// bisa
+#     langsung dipakai tanpa menambah jar sendiri)
+#   - JDBC driver PostgreSQL (untuk spark.read/write via JDBC)
+#   - JupyterLab, pandas, plotly, psycopg2, pytest
+#
+# Build: docker compose build jupyter
+# ============================================================
+
+FROM python:3.11-slim-bookworm
+
+LABEL maintainer="Kelompok 20 tulang keBAKAR" \
+      project="SiPeka"
+
+# ------------------------------------------------------------
+# 1. Dependensi sistem
+#    - openjdk-17-jre-headless : JVM untuk Spark
+#    - curl                    : healthcheck + unduh JDBC driver
+#    - procps                  : ps di dalam container
+#    - gcc/g++                 : beberapa wheel belum tersedia untuk slim
+# ------------------------------------------------------------
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openjdk-17-jre-headless \
+        curl \
+        procps \
+        ca-certificates \
+        tini \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# ------------------------------------------------------------
+# 2. User non-root
+#    UID/GID default 1000 supaya file hasil tidak jadi milik root
+#    di Windows. Bisa di-override lewat build arg.
+# ------------------------------------------------------------
+ARG NB_UID=1000
+ARG NB_GID=1000
+RUN groupadd -g "${NB_GID}" sipeka \
+    && useradd -m -u "${NB_UID}" -g "${NB_GID}" -s /bin/bash sipeka
+
+# ------------------------------------------------------------
+# 3. Dependensi Python
+#    Dipisah dari copy source supaya layer cache tidak bikin
+#    rebuild lama setiap kode berubah.
+# ------------------------------------------------------------
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /tmp/requirements.txt
+
+# ------------------------------------------------------------
+# 4. JDBC driver PostgreSQL
+#    Disimpan di folder yang didaftarkan ke spark.jars supaya
+#    `df.write.jdbc(...)` langsung jalan tanpa --jars manual.
+#    Versi 42.7.x kompatibel dengan PostgreSQL 16.
+# ------------------------------------------------------------
+ENV JDBC_DIR=/opt/jdbc
+RUN mkdir -p "${JDBC_DIR}" \
+    && curl -fsSL -o "${JDBC_DIR}/postgresql-42.7.4.jar" \
+       https://jdbc.postgresql.org/download/postgresql-42.7.4.jar \
+    && ls -lh "${JDBC_DIR}"
+
+# ------------------------------------------------------------
+# 5. Konfigurasi Spark global
+#    Di-COPY dari docker/spark-defaults.conf, bukan ditulis dengan
+#    echo/heredoc di RUN. Alasannya: shell heredoc tidak andal di
+#    semua builder, dan file statis bisa di-diff/direview seperti kode.
+#
+#    Catatan RAM: driver dibatasi 1g karena host hanya 7,7 GB.
+#    Mode local[*] di dalam container → driver = executor.
+# ------------------------------------------------------------
+ENV SPARK_HOME=/usr/local/lib/python3.11/site-packages/pyspark
+COPY docker/spark-defaults.conf ${SPARK_HOME}/conf/spark-defaults.conf
+RUN ls -l "${SPARK_HOME}/conf/" && cat "${SPARK_HOME}/conf/spark-defaults.conf"
+
+# ------------------------------------------------------------
+# 6. Siapkan workspace
+# ------------------------------------------------------------
+RUN mkdir -p /workspace /home/sipeka/.cache/pip \
+    && chown -R "${NB_UID}:${NB_GID}" /workspace /home/sipeka
+
+USER sipeka
+WORKDIR /workspace
+
+ENV HOME=/home/sipeka
+ENV PYTHONPATH=/workspace
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 8888
+EXPOSE 4040
+
+# tini mencegah proses zombie JVM/Spark
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# ------------------------------------------------------------
+# 7. JupyterLab: tanpa password, token dari environment
+#    --ip=0.0.0.0 wajib supaya bisa diakses dari Windows
+# ------------------------------------------------------------
+CMD ["sh", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token=${JUPYTER_TOKEN:-sipeka} --ServerApp.password='' --ServerApp.allow_origin='*' --ServerApp.root_dir=/workspace"]

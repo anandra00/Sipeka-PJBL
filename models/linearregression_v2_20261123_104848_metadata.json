@@ -1,0 +1,96 @@
+{
+  "versi_model": "linearregression_v2_20261123_104848",
+  "model": "LinearRegression",
+  "versi_fitur": "v2",
+  "fitur_numerik": [
+    "tahun",
+    "bulan",
+    "hari_dalam_bulan",
+    "hari_dalam_minggu",
+    "is_weekend",
+    "minggu_ke",
+    "kuartal",
+    "hari_ke_dalam_tahun",
+    "bulan_sin",
+    "bulan_cos",
+    "hari_sin",
+    "hari_cos",
+    "is_musim_hujan",
+    "is_hari_libur",
+    "lag_1",
+    "lag_7",
+    "lag_14",
+    "rolling_mean_7",
+    "rolling_mean_14",
+    "rolling_mean_30",
+    "rolling_std_7",
+    "rolling_max_7",
+    "titik_hist_mean",
+    "titik_hist_zero_rate"
+  ],
+  "fitur_kategorik": [
+    "titik_lokasi",
+    "kecamatan",
+    "wilayah"
+  ],
+  "fitur_model": [
+    "tahun",
+    "bulan",
+    "hari_dalam_bulan",
+    "hari_dalam_minggu",
+    "is_weekend",
+    "minggu_ke",
+    "kuartal",
+    "hari_ke_dalam_tahun",
+    "bulan_sin",
+    "bulan_cos",
+    "hari_sin",
+    "hari_cos",
+    "is_musim_hujan",
+    "is_hari_libur",
+    "lag_1",
+    "lag_7",
+    "lag_14",
+    "rolling_mean_7",
+    "rolling_mean_14",
+    "rolling_mean_30",
+    "rolling_std_7",
+    "rolling_max_7",
+    "titik_hist_mean",
+    "titik_hist_zero_rate",
+    "titik_lokasi_ohe",
+    "kecamatan_ohe",
+    "wilayah_ohe"
+  ],
+  "parameter": {
+    "regParam": 0.05,
+    "elasticNetParam": 0.1,
+    "maxIter": 100
+  },
+  "max_bins": null,
+  "skema_split": {
+    "mode": "kronologis_70_15_15",
+    "rasio_target": {
+      "train": 0.7,
+      "validation": 0.15,
+      "test": 0.15
+    },
+    "tanggal_train_akhir": "2021-07-03",
+    "tanggal_valid_akhir": "2021-10-02",
+    "total_baris": 1068562,
+    "tanggal_maks": "2021-12-31"
+  },
+  "latih_tanpa_outlier": true,
+  "metrik_validation": {
+    "rmse": 3.2933101768029505,
+    "mae": 0.9446311790002794,
+    "r2": 0.08687226747852184
+  },
+  "metrik_test": {
+    "rmse": 3.7332937069862333,
+    "mae": 0.8952116062443207,
+    "r2": 0.15869434697681006
+  },
+  "dilatih_pada": "2026-11-23T10:48:50",
+  "catatan": "Dipromosikan oleh auto-retrain (fast)."
+}

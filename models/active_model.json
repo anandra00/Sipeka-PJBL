@@ -1,0 +1,42 @@
+{
+  "versi_model": "linearregression_v2_20261123_104848",
+  "model": "LinearRegression",
+  "versi_fitur": "v2",
+  "model_path": "models/linearregression_v2_20261123_104848",
+  "metadata_path": "models/linearregression_v2_20261123_104848_metadata.json",
+  "metrik_path": "models/linearregression_v2_20261123_104848_metrik.csv",
+  "pkl_path": "models/active_model.pkl",
+  "pkl_versioned_path": "models/linearregression_v2_20261123_104848.pkl",
+  "h5_path": "models/active_model.h5",
+  "h5_versioned_path": "models/linearregression_v2_20261123_104848.h5",
+  "titik_v3_forecast_path": "data/serving/titik_phb_v3_forecast.json",
+  "parameter": {
+    "regParam": 0.05,
+    "elasticNetParam": 0.1,
+    "maxIter": 100
+  },
+  "skema_split": {
+    "mode": "kronologis_70_15_15",
+    "rasio_target": {
+      "train": 0.7,
+      "validation": 0.15,
+      "test": 0.15
+    },
+    "tanggal_train_akhir": "2021-07-03",
+    "tanggal_valid_akhir": "2021-10-02",
+    "total_baris": 1068562,
+    "tanggal_maks": "2021-12-31"
+  },
+  "metrik_validation": {
+    "rmse": 3.2933101768029505,
+    "mae": 0.9446311790002794,
+    "r2": 0.08687226747852184
+  },
+  "metrik_test": {
+    "rmse": 3.7332937069862333,
+    "mae": 0.8952116062443207,
+    "r2": 0.15869434697681006
+  },
+  "data_fingerprint": "069bab911337b2395f7b40885d86f8c190b6368704a512d212bd6f1731e84b4c",
+  "promoted_at": "2026-11-23T10:48:50"
+}

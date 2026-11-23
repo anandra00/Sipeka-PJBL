@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.StringIndexerModel","timestamp":1795405729509,"sparkVersion":"3.5.3","uid":"StringIndexer_6aeb6e89c382","paramMap":{"handleInvalid":"keep","outputCol":"wilayah_idx","inputCol":"wilayah"},"defaultParamMap":{"stringOrderType":"frequencyDesc","handleInvalid":"error","outputCol":"StringIndexer_6aeb6e89c382__output"}}

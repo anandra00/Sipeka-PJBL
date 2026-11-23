@@ -1,0 +1,63 @@
+[
+  {
+    "timestamp": "2026-11-23T10:48:50",
+    "status": "PROMOTED",
+    "mode": "fast",
+    "data_fingerprint": "069bab911337b2395f7b40885d86f8c190b6368704a512d212bd6f1731e84b4c",
+    "skema_split": {
+      "mode": "kronologis_70_15_15",
+      "rasio_target": {
+        "train": 0.7,
+        "validation": 0.15,
+        "test": 0.15
+      },
+      "tanggal_train_akhir": "2021-07-03",
+      "tanggal_valid_akhir": "2021-10-02",
+      "total_baris": 1068562,
+      "tanggal_maks": "2021-12-31"
+    },
+    "champion_sebelum": "linearregression_v2_20261121_170617",
+    "champion_rmse_valid": 3.2969805496149633,
+    "champion_metrik_evaluasi": {
+      "validation": {
+        "rmse": 3.2969805496149633,
+        "mae": 0.947437492176275,
+        "r2": 0.08483578342660414
+      },
+      "validation_source": "tercatat (out-of-sample)",
+      "test": {
+        "rmse": 3.740379134746613,
+        "mae": 0.9284044154476898,
+        "r2": 0.15549788422529032
+      }
+    },
+    "challenger_terbaik": {
+      "model": "LinearRegression",
+      "versi_fitur": "v2",
+      "params": {
+        "regParam": 0.05,
+        "elasticNetParam": 0.1,
+        "maxIter": 100
+      },
+      "metrik_validation": {
+        "rmse": 3.2933101768029505,
+        "mae": 0.9446311790002794,
+        "r2": 0.08687226747852184
+      },
+      "metrik_test": {
+        "rmse": 3.7332937069862333,
+        "mae": 0.8952116062443207,
+        "r2": 0.15869434697681006
+      }
+    },
+    "model_aktif_akhir": "linearregression_v2_20261123_104848"
+  },
+  {
+    "timestamp": "2026-11-23T10:51:41",
+    "status": "SKIPPED_NO_NEW_DATA",
+    "mode": "fast",
+    "data_fingerprint": "069bab911337b2395f7b40885d86f8c190b6368704a512d212bd6f1731e84b4c",
+    "champion_aktif": "linearregression_v2_20261123_104848",
+    "alasan": "Tidak ada perubahan pada Dataset/ maupun features_v2."
+  }
+]

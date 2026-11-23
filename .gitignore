@@ -1,6 +1,9 @@
 # Data mentah & hasil proses besar di root repo (melebihi batas ukuran GitHub)
-/Dataset/
-/data/
+/Dataset/*
+!/Dataset/dataset_titik_phb-v3.json
+/data/*
+!/data/serving/
+/data/serving/forecast_future_parquet/
 /spark-warehouse/
 
 # Binary Hadoop lokal Windows

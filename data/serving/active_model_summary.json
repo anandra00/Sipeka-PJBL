@@ -1,0 +1,26 @@
+{
+  "model_version": "linearregression_v2_20261123_104848",
+  "model": "LinearRegression",
+  "versi_fitur": "v2",
+  "scored_at": "2026-11-23T11:03:05",
+  "horizon_hari": 30,
+  "forecast_mulai": "2022-01-01",
+  "forecast_akhir": "2022-01-30",
+  "jumlah_baris_test": 158918,
+  "jumlah_titik_forecast": 2991,
+  "jumlah_titik_berkoordinat": 882,
+  "jumlah_entri_phb_v3": 974,
+  "pkl_path": "models/active_model.pkl",
+  "h5_path": "models/active_model.h5",
+  "titik_v3_forecast_path": "data/serving/titik_phb_v3_forecast.json",
+  "metrik_validation": {
+    "rmse": 3.2933101768029505,
+    "mae": 0.9446311790002794,
+    "r2": 0.08687226747852184
+  },
+  "metrik_test": {
+    "rmse": 3.7332937069862333,
+    "mae": 0.8952116062443207,
+    "r2": 0.15869434697681006
+  }
+}
